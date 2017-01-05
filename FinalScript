@@ -1,0 +1,11 @@
+python3 /home/rangathara/ML/tensorflow/tensorflow/examples/image_retraining/retrain.py \
+--bottleneck_dir=/home/rangathara/ML/tf_files/bottlenecks \
+--model_dir=/home/rangathara/ML/tf_files/inception \
+--output_graph=/home/rangathara/ML/tf_files/retrained_graph.pb \
+--output_labels=/home/rangathara/ML/tf_files/retrained_labels.txt \
+--image_dir /home/rangathara/ML/tf_files/images
+
+
+
+To test an image from the file "tf_files":
+python3 label_image.py <path for the .jpg image file to test>
