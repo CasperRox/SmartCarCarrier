@@ -41,9 +41,9 @@ while (True):
     rightTriangleT3 = [width, heightFilter2]
 
     xLeftDown = 0
-    xRightDown = sys.maxsize
-    xLeftUp = width / 2
-    xRightUp = width / 2
+    xRightDown = width
+    xLeftUp = (int)(width / 2)
+    xRightUp = (int)(width / 2)
 
     winName = "Movement Indicator"
     cv2.namedWindow(winName, cv2.WINDOW_AUTOSIZE)
@@ -80,11 +80,11 @@ while (True):
                     if x1New <= widthFilterMiddle and x1New > xLeftDown:   # Left lane marking
                         xLeftDown = x1New
                         xLeftUp = x2New
-                        cv2.line(img, (xLeftDown,height), (xLeftUp,heightFilter1), (0, 255, 0), 2)
                     elif x1New > widthFilterMiddle and x1New < xRightDown:  # Right lane marking
                         xRightDown = x1New
                         xRightUp = x2New
-                        cv2.line(img, (xRightDown,height), (xRightUp,heightFilter1), (0, 255, 0), 2)
+                    cv2.line(img, (xLeftDown,height), (xLeftUp,heightFilter1), (0, 255, 0), 2)
+                    cv2.line(img, (xRightDown,height), (xRightUp,heightFilter1), (0, 255, 0), 2)
                     # cv2.line(img, (x1New,height), (x2New,heightFilter1), (0, 255, 0), 2)
                 # cv2.line(img, (x1,y1), (x2,y2), (0, 0, 255), 2)
         # pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter1],[xRightUp,heightFilter1],
