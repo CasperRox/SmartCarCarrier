@@ -26,19 +26,19 @@ while (True):
     # img = cv2.imread("/home/rangathara/FYP/images/testingImage4.bmp")
     height, width, colorDepth = img.shape
     # print (height, width, colorDepth)
-    heightFilter1 = (int)(height * 65 / 100)
-    heightFilter2 = (int)(height * 80 / 100)
-    heightFilterMiddle = (int)(height * 60 / 100)
-    widthFilter1 = (int)(width * 40 / 100)
-    widthFilter2 = (int)(width * 60 / 100)
+    heightFilter65 = (int)(height * 65 / 100)
+    heightFilter80 = (int)(height * 80 / 100)
+    heightFilter35 = (int)(height * 35 / 100)
+    widthFilter40 = (int)(width * 40 / 100)
+    widthFilter60 = (int)(width * 60 / 100)
     widthFilterMiddle = (int)(width * 50 / 100)
 
-    leftTriangleT1 = [0, heightFilter1]
-    leftTriangleT2 = [widthFilter1, heightFilter1]
-    leftTriangleT3 = [0, heightFilter2]
-    rightTriangleT1 = [widthFilter2, heightFilter1]
-    rightTriangleT2 = [width, heightFilter1]
-    rightTriangleT3 = [width, heightFilter2]
+    leftTriangleT1 = [0, heightFilter65]
+    leftTriangleT2 = [widthFilter40, heightFilter65]
+    leftTriangleT3 = [0, heightFilter80]
+    rightTriangleT1 = [widthFilter60, heightFilter65]
+    rightTriangleT2 = [width, heightFilter65]
+    rightTriangleT3 = [width, heightFilter80]
 
     xLeftDown = 0
     xRightDown = width
@@ -58,7 +58,7 @@ while (True):
         for line in lines:
             for obj in line:
                 [x1, y1, x2, y2] = obj
-                if y1<heightFilter1 or y2<heightFilter1:    # To ignore lines above the road
+                if y1<heightFilter65 or y2<heightFilter65:    # To ignore lines above the road
                     continue
                 dx, dy = x2 - x1, y2 - y1
                 angle = np.arctan2(dy, dx) * 180 / np.pi
@@ -76,23 +76,25 @@ while (True):
                     continue
                 if 0 != dy:     # if dy=0 following equations will not work
                     x1New = (int)((((height-y1)/dy*dx)+x1))         # Increase the line length
-                    x2New = (int)((((heightFilter1-y1)/dy*dx)+x1))  # Increase the line length
+                    x2New = (int)((((heightFilter65-y1)/dy*dx)+x1))  # Increase the line length
                     if x1New <= widthFilterMiddle and x1New > xLeftDown:   # Left lane marking
                         xLeftDown = x1New
                         xLeftUp = x2New
                     elif x1New > widthFilterMiddle and x1New < xRightDown:  # Right lane marking
                         xRightDown = x1New
                         xRightUp = x2New
-                    cv2.line(img, (xLeftDown,height), (xLeftUp,heightFilter1), (0, 255, 0), 2)
-                    cv2.line(img, (xRightDown,height), (xRightUp,heightFilter1), (0, 255, 0), 2)
-                    # cv2.line(img, (x1New,height), (x2New,heightFilter1), (0, 255, 0), 2)
+                    cv2.line(img, (xLeftDown,height), (xLeftUp,heightFilter65), (0, 255, 0), 2)
+                    cv2.line(img, (xRightDown,height), (xRightUp,heightFilter65), (0, 255, 0), 2)
+                    # cv2.line(img, (x1New,height), (x2New,heightFilter65), (0, 255, 0), 2)
                 # cv2.line(img, (x1,y1), (x2,y2), (0, 0, 255), 2)
-        # pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter1],[xRightUp,heightFilter1],
+        # pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter65],[xRightUp,heightFilter65],
             # [xRightDown,height]], np.int32)
-        pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter1],[xLeftUp,heightFilterMiddle],
-            [xLeftDown,heightFilterMiddle]], np.int32)
-        pts2 = np.array([[xRightDown,height],[xRightUp,heightFilter1],[xRightUp,heightFilterMiddle],
-            [xRightDown,heightFilterMiddle]], np.int32)
+
+        # Assuming that the camera is mounted at middle of the height of the vehicle
+        pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter65],[xLeftUp,heightFilter35],
+            [xLeftDown,0]], np.int32)
+        pts2 = np.array([[xRightDown,height],[xRightUp,heightFilter65],[xRightUp,heightFilter35],
+            [xRightDown,0]], np.int32)
 
         # pts = pts.reshape((-1,1,2))
         cv2.fillPoly(img,[pts],(0,255,255,0.1))
