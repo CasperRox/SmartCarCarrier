@@ -1,6 +1,19 @@
 import numpy as np
 import cv2
+import imutils
 import time
+
+def detectObject(imgSrc, imgTarget):
+	for y in xrange(0, imgSrc.shape[0], 30):
+		for x in xrange(0, imgSrc.shape[1], 30):
+			imgTemp = imgSrc[y:y+imgTarget.shape[0], x:x+imgTarget.shape[1]]
+			imgDiff = imgTemp - imgTarget
+			cv2.subtract(imgTemp, imgTarget, imgDiff)
+	# compute the new dimensions of the image and resize it
+	w = int(imgSrc.shape[1]/1.5)
+	imgSrc = imutils.resize(imgSrc, width=w)
+	if imgSrc.shape[0]<imgTarget.shape[0] or imgSrc.shape[1]<imgTarget[1]:
+		return
 
 # cam = cv2.VideoCapture(0)
 # cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/CutHighwayVideo.mp4")
