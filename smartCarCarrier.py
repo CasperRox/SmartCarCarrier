@@ -18,7 +18,7 @@ def pointInTriangle(p1, t1, t2, t3):
     else:
         return False
 
-def laneDetection(img):
+def laneDetection():
     height, width, colorDepth = img.shape
     # print (height, width, colorDepth)
     heightFilter65 = (int)(height * 65 / 100)
@@ -39,9 +39,6 @@ def laneDetection(img):
     xRightDown = width
     xLeftUp = (int)(width / 2)
     xRightUp = (int)(width / 2)
-
-    winName = "Movement Indicator"
-    cv2.namedWindow(winName, cv2.WINDOW_AUTOSIZE)
 
     # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # edges = cv2.Canny(img, 100, 200)
@@ -86,13 +83,13 @@ def laneDetection(img):
             # [xRightDown,height]], np.int32)
 
         # Assuming that the camera is mounted at middle of the height of the vehicle
-        pts = np.array([[xLeftDown,height],[xLeftUp,heightFilter65],[xLeftUp,heightFilter35],
-            [xLeftDown,0]], np.int32)
-        pts2 = np.array([[xRightDown,height],[xRightUp,heightFilter65],[xRightUp,heightFilter35],
-            [xRightDown,0]], np.int32)
+        pts1 = np.array([[0,height],[xLeftDown,height],[xLeftUp,heightFilter65],[xLeftUp,heightFilter35],
+            [xLeftDown,0],[0,0]], np.int32)
+        pts2 = np.array([[width,height],[xRightDown,height],[xRightUp,heightFilter65],[xRightUp,heightFilter35],
+            [xRightDown,0],[width,0]], np.int32)
 
         # pts = pts.reshape((-1,1,2))
-        cv2.fillPoly(img,[pts],(0,255,255,0.1))
+        cv2.fillPoly(img,[pts1],(0,255,255,0.1))
         cv2.fillPoly(img,[pts2],(0,255,255,0.1))
 
     # cv2.imshow('edges', edges)
@@ -132,7 +129,7 @@ def detectSameObject(imgSrc, imgTarget):
 	# cv2.imshow("Detected", imgOrig[xy[0]:xy[0]+imgTarget.shape[0], xy[1]:xy[1]+imgTarget.shape[1]])
 	return scaling
 
-def objectDetection(img):
+def objectDetection():
 	imgGray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 	ret,thresh = cv2.threshold(imgGray,35,255,cv2.THRESH_BINARY)
 	edges = cv2.Canny(imgGray, 30, 150)
@@ -183,8 +180,8 @@ while (True):
 	s, img = cam.read()
 	# img = cv2.imread("/home/rangathara/FYP/images/colombo---kandy-road-warakapola.jpg")
 
-	laneDetection(img)
-	objectDetection(img)
+	laneDetection()
+	objectDetection()
 
 	cv2.imshow("Original", img)
 
