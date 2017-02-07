@@ -98,8 +98,8 @@ def detectSameObject(imgSrc, imgTarget):
 	imgOrig = imgSrc
 	sizeCounter = 1.0
 	zeroCountMax = 0
-	# scaling = 0
-	# xyCordinates = (0,0)
+	scaling = 0
+	xyCordinates = (0,0)
 	while True:
 		if imgSrc.shape[0]<imgTarget.shape[0] or imgSrc.shape[1]<imgTarget.shape[1]:
 			break
@@ -126,12 +126,13 @@ def detectSameObject(imgSrc, imgTarget):
 	# print (zeroCountMax)
 	xy = [int(x*scaling) for x in xyCordinates]
 	cv2.rectangle(img,(xy[1],xy[0]),(xy[1]+imgTarget.shape[1],xy[0]+imgTarget.shape[0]),(0,0,255),2)
-	# cv2.imshow("Detected", imgOrig[xy[0]:xy[0]+imgTarget.shape[0], xy[1]:xy[1]+imgTarget.shape[1]])
+	cv2.imshow("Detected", imgOrig[xy[0]:xy[0]+imgTarget.shape[0], xy[1]:xy[1]+imgTarget.shape[1]])
 	return scaling
 
 def objectDetection():
+	# cv2.imshow("Before", img)
 	imgGray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-	ret,thresh = cv2.threshold(imgGray,35,255,cv2.THRESH_BINARY)
+	# ret,thresh = cv2.threshold(imgGray,35,255,cv2.THRESH_BINARY)
 	edges = cv2.Canny(imgGray, 30, 150)
 
 	kernel = np.ones((5,5),np.uint8)
@@ -140,7 +141,7 @@ def objectDetection():
 	# opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)	# erosion then dilation
 	# cv2.imshow("morphology2", opening)
 	ret,thresh1 = cv2.threshold(closing,127,255,cv2.THRESH_BINARY_INV)
-	# cv2.imshow("morphology1", thresh1)
+	cv2.imshow("morphology1", thresh1)
 
 	# im2,contours,hierarchy = cv2.findContours(edges,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 	im2,contours,hierarchy = cv2.findContours(thresh1,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
@@ -150,10 +151,10 @@ def objectDetection():
 	# kpOrig, desOrig = orb.detectAndCompute(imgGray,None)
 	# bf = cv2.BFMatcher(cv2.NORM_HAMMING2, crossCheck=True)
 
-	for cnt in contours[1:5]:	# the biggest rectangle is around the whole image
+	for cnt in contours[1:4]:	# the biggest rectangle is around the whole image
 		x,y,w,h = cv2.boundingRect(cnt)
 		# imgCrop = imgGray[y:y+h, x:x+w]
-		imgCrop = closing[y:y+h, x:x+w]
+		imgCrop = imgGray[y:y+h, x:x+w]
 		# kpObj, desObj = orb.detectAndCompute(imgCrop,None)
 		# if len(kpObj) == 0:
 			# continue
@@ -161,10 +162,10 @@ def objectDetection():
 		# matches = sorted(matches, key = lambda x:x.distance)
 		# img3 = cv2.drawMatches(imgGray,kpOrig,imgCrop,kpObj,matches[:10],None, flags=2)
 		# cv2.imshow("cropped", img3)
-		# cv2.imshow("cropped", imgCrop)
+		cv2.imshow("cropped", imgCrop)
 		cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
 		# scaling = detectSameObject(imgGray, imgCrop)
-		scaling = detectSameObject(closing, imgCrop)
+		scaling = detectSameObject(imgGray, imgCrop)
 		# print (scaling)
 		# time.sleep(1)
 
