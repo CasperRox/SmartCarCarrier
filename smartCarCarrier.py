@@ -1,7 +1,17 @@
 import numpy as np
 import cv2
 import imutils
+import math
 import time
+
+def calculateVehicleDistance():
+	global timePrevious
+	timeCurrent = round(time.time()*1000)	# current time in milliseconds
+	acceleration = 2	# this value is from the accelerometer reading (m/s2)
+	velocityDiff = acceleration * (timeCurrent - timePrevious) / 1000	# (m/s)
+	distanceDiff = velocityDiff * (timeCurrent - timePrevious) / 1000	# (m)
+	timePrevious = timeCurrent
+	return distanceDiff
 
 def sameSideLine(p1, p2, l1, l2):
 	p1Line = (p1[0]-l1[0])*(l1[1]-l2[1]) - (p1[1]-l1[1])*(l1[0]-l2[0])
@@ -19,6 +29,7 @@ def pointInTriangle(p1, t1, t2, t3):
 		return False
 
 def laneDetection():
+	global img
 	height, width, colorDepth = img.shape
 	# print (height, width, colorDepth)
 	heightFilter65 = (int)(height * 65 / 100)
@@ -130,10 +141,12 @@ def detectSameObject(imgSrc, imgTarget):
 	return scaling
 
 def objectDetection():
-	# cv2.imshow("Before", img)
+	global img
+	global imgPrevious
 	imgGray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+	imgPreviousGray = cv2.cvtColor(imgPrevious,cv2.COLOR_BGR2GRAY)
 	# ret,thresh = cv2.threshold(imgGray,35,255,cv2.THRESH_BINARY)
-	edges = cv2.Canny(imgGray, 30, 150)
+	edges = cv2.Canny(imgPreviousGray, 30, 150)
 
 	kernel = np.ones((5,5),np.uint8)
 	closing = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)	# dilation then erosion
@@ -147,24 +160,39 @@ def objectDetection():
 	im2,contours,hierarchy = cv2.findContours(thresh1,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 	contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
 
-	orb = cv2.ORB_create()
+	orb = cv2.ORB_create(nfeatures=100)	# default no of features is 500
 	kpOrig, desOrig = orb.detectAndCompute(imgGray,None)
 	bf = cv2.BFMatcher(cv2.NORM_HAMMING2, crossCheck=True)
 
 	for cnt in contours[1:4]:	# the biggest rectangle is around the whole image
 		x,y,w,h = cv2.boundingRect(cnt)
-		imgCrop = imgGray[y:y+h, x:x+w]
+		imgCrop = imgPreviousGray[y:y+h, x:x+w]
 		kpObj, desObj = orb.detectAndCompute(imgCrop,None)
-		if len(kpObj) == 0:
+		if len(kpObj) == 0:	# no detectable features available
 			continue
 		matches = bf.match(desOrig,desObj)
 		matches = sorted(matches, key = lambda x:x.distance)
+		if len(matches) < 2:	# need minimum two feature points to get distance
+			continue
+		# get keypoint coordinates of first two lowest distance matches
+		listkpOrig = [kpOrig[mat.queryIdx].pt for mat in matches[:2]]
+		listkpObj = [kpObj[mat.trainIdx].pt for mat in matches[:2]]
+		# calculate distance between first two matches
+		distancekpOrig = math.sqrt(math.pow((listkpOrig[0][0]-listkpOrig[1][0]),2)+
+			math.pow((listkpOrig[0][1]-listkpOrig[1][1]),2))
+		distancekpObj = math.sqrt(math.pow((listkpObj[0][0]-listkpObj[1][0]),2)+
+			math.pow((listkpObj[0][1]-listkpObj[1][1]),2))
+		if distancekpOrig <= distancekpObj:	# detected object is too far
+			continue
+		# calculate distance to the object from the vehicle (m)
+		distanceToObject = (calculateVehicleDistance() * distancekpObj)/(distancekpOrig - distancekpObj)
+
+		print ("%.2f" % distanceToObject)
 		img3 = cv2.drawMatches(imgGray,kpOrig,imgCrop,kpObj,matches[:10],None, flags=2)
 		cv2.imshow("cropped", img3)
 		# cv2.imshow("cropped", imgCrop)
-		cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+		cv2.rectangle(imgPrevious,(x,y),(x+w,y+h),(0,255,0),2)
 		# scaling = detectSameObject(imgGray, imgCrop)
-		# print (scaling)
 		# time.sleep(0.5)
 
 	# cv2.imshow("threshold", thresh)
@@ -172,8 +200,13 @@ def objectDetection():
 
 
 
+# **********Main**********
+
 # cam = cv2.VideoCapture(0)
 cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/CutHighwayVideo.mp4")
+
+timePrevious = round(time.time()*1000)	# current time in milliseconds
+s, imgPrevious = cam.read()	# keep track of previous frame to calculate distance
 
 while (True):
 	s, img = cam.read()
@@ -182,7 +215,8 @@ while (True):
 	laneDetection()
 	objectDetection()
 
-	cv2.imshow("Original", img)
+	cv2.imshow("Original", imgPrevious)
+	imgPrevious = img
 
 	if cv2.waitKey(10) & 0xff == ord('q'):
 		break
