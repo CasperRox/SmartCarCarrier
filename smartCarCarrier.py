@@ -7,10 +7,14 @@ import time
 def calculateVehicleDistance():
 	global timePrevious
 	timeCurrent = round(time.time()*1000)	# current time in milliseconds
-	acceleration = 2	# this value is from the accelerometer reading (m/s2)
-	velocityDiff = acceleration * (timeCurrent - timePrevious) / 1000	# (m/s)
-	distanceDiff = velocityDiff * (timeCurrent - timePrevious) / 1000	# (m)
+	timeDiff = (timeCurrent - timePrevious) / 1000	# time difference (s)
+	# print ("t", timeDiff)
+	# acceleration = 2	# this value is from the accelerometer reading (m/s2)
+	# velocity = acceleration * timeDiff	# (m/s)
+	velocity = 10	# this value have to be measured (m/s)
+	distanceDiff = velocity * timeDiff	# (m)
 	timePrevious = timeCurrent
+	# print ("l", distanceDiff)
 	return distanceDiff
 
 def sameSideLine(p1, p2, l1, l2):
@@ -185,13 +189,25 @@ def objectDetection():
 		if distancekpOrig <= distancekpObj:	# detected object is too far
 			continue
 		# calculate distance to the object from the vehicle (m)
+		# print ("a", distancekpObj)
+		# print ("b", distancekpOrig)
 		distanceToObject = (calculateVehicleDistance() * distancekpObj)/(distancekpOrig - distancekpObj)
-
-		print ("%.2f" % distanceToObject)
+		print ("distance", "%.2f" %distanceToObject, "m")
+		# calibration
+		# assuming 50m long lane is shown in lower 35% of the image
+		if distanceToObject < 50:
+			yCoordinate = (int)(img.shape[0]/100*(100-(distanceToObject / 50 * 35)))
+			heightPixel = yCoordinate - listkpOrig[0][1]
+			# assume the focal length of the camera is 50mm
+			focalLength = 50 / 1000
+			# calibration
+			# height of the image = 185mm = 720px
+			heightActual = (heightPixel/720*0.185) * distanceToObject / focalLength
+			print ("heightLimit =", "%.2f" %heightActual, "m")
 		img3 = cv2.drawMatches(imgGray,kpOrig,imgCrop,kpObj,matches[:10],None, flags=2)
 		cv2.imshow("cropped", img3)
 		# cv2.imshow("cropped", imgCrop)
-		cv2.rectangle(imgPrevious,(x,y),(x+w,y+h),(0,255,0),2)
+		cv2.rectangle(imgPrevious,(x,y),(x+w,y+h),(0,0,255),2)
 		# scaling = detectSameObject(imgGray, imgCrop)
 		# time.sleep(0.5)
 
@@ -221,7 +237,7 @@ while (True):
 	if cv2.waitKey(10) & 0xff == ord('q'):
 		break
 
-	# time.sleep(0.5)
+	# time.sleep(0.25)
 
 cam.release()
 cv2.destroyAllWindow()
