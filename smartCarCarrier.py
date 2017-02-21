@@ -208,6 +208,7 @@ def objectDetection():
 		cv2.imshow("cropped", img3)
 		# cv2.imshow("cropped", imgCrop)
 		cv2.rectangle(imgPrevious,(x,y),(x+w,y+h),(0,0,255),2)
+		cv2.putText(imgPrevious, '%.2f' %distanceToObject, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,255), 2, cv2.LINE_AA)
 		# scaling = detectSameObject(imgGray, imgCrop)
 		# time.sleep(0.5)
 
@@ -218,8 +219,11 @@ def objectDetection():
 
 # **********Main**********
 
-# cam = cv2.VideoCapture(0)
-cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/CutHighwayVideo.mp4")
+cam = cv2.VideoCapture(1)
+# cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/Videos/WIN_20170218_171342.MP4")
+
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('output.avi',fourcc,20.0,(640,480))
 
 timePrevious = round(time.time()*1000)	# current time in milliseconds
 s, imgPrevious = cam.read()	# keep track of previous frame to calculate distance
@@ -232,12 +236,15 @@ while (True):
 	objectDetection()
 
 	cv2.imshow("Original", imgPrevious)
+
+	out.write(imgPrevious)
+
 	imgPrevious = img
 
 	if cv2.waitKey(10) & 0xff == ord('q'):
 		break
 
-	# time.sleep(0.25)
+	time.sleep(0.25)
 
 cam.release()
 cv2.destroyAllWindow()
