@@ -17,6 +17,33 @@ def calculateVehicleDistance():
 	# print ("l", distanceDiff)
 	return distanceDiff
 
+def yCoordinateOnRoad(distance):
+	""" Camera calibration values to get the y coordinate on the road relavent to a
+	given distance.
+	Height to the camera from the floor = 1150mm
+	Total height of the image = 179mm -> 480 pixels
+	"""
+	if distance < 10:
+		return (480-((distance-5)/5*(480-408)))
+	elif distance < 15:
+		return (408-((distance-10)/5*(408-375)))
+	elif distance < 20:
+		return (375-((distance-15)/5*(375-359)))
+	elif distance < 25:
+		return (359-((distance-20)/5*(359-349)))
+	elif distance < 30:
+		return (349-((distance-25)/5*(349-341)))
+	elif distance < 35:
+		return (341-((distance-30)/5*(341-335)))
+	elif distance < 40:
+		return (335-((distance-35)/5*(335-333)))
+	elif distance < 45:
+		return (333-((distance-40)/5*(333-330)))
+	elif distance < 50:
+		return (330-((distance-45)/5*(330-329)))
+	else:
+		return 329
+
 def sameSideLine(p1, p2, l1, l2):
 	p1Line = (p1[0]-l1[0])*(l1[1]-l2[1]) - (p1[1]-l1[1])*(l1[0]-l2[0])
 	p2Line = (p2[0]-l1[0])*(l1[1]-l2[1]) - (p2[1]-l1[1])*(l1[0]-l2[0])
@@ -175,34 +202,44 @@ def objectDetection():
 		if len(kpObj) == 0:	# no detectable features available
 			continue
 		matches = bf.match(desOrig,desObj)
-		matches = sorted(matches, key = lambda x:x.distance)
+		# matches = sorted(matches, key = lambda x:x.distance)
 		if len(matches) < 2:	# need minimum two feature points to get distance
 			continue
 		# get keypoint coordinates of first two lowest distance matches
 		listkpOrig = [kpOrig[mat.queryIdx].pt for mat in matches[:2]]
 		listkpObj = [kpObj[mat.trainIdx].pt for mat in matches[:2]]
+		# calculate height difference between first two matches
+		heightkpOrig = abs(listkpOrig[0][1]-listkpOrig[1][1])
+		heightkpObj = abs(listkpObj[0][1]-listkpObj[1][1])
+		print("h", heightkpOrig - heightkpObj)
+		if heightkpOrig <= heightkpObj:	# detected object is too far
+			continue
+		# no need the actual difference, height difference is sufficient
 		# calculate distance between first two matches
 		distancekpOrig = math.sqrt(math.pow((listkpOrig[0][0]-listkpOrig[1][0]),2)+
 			math.pow((listkpOrig[0][1]-listkpOrig[1][1]),2))
 		distancekpObj = math.sqrt(math.pow((listkpObj[0][0]-listkpObj[1][0]),2)+
 			math.pow((listkpObj[0][1]-listkpObj[1][1]),2))
+		print("d", distancekpOrig - distancekpObj)
 		if distancekpOrig <= distancekpObj:	# detected object is too far
 			continue
 		# calculate distance to the object from the vehicle (m)
 		# print ("a", distancekpObj)
 		# print ("b", distancekpOrig)
 		distanceToObject = (calculateVehicleDistance() * distancekpObj)/(distancekpOrig - distancekpObj)
+		# distanceToObject = (calculateVehicleDistance() * heightkpObj)/(heightkpOrig - heightkpObj)
 		print ("distance", "%.2f" %distanceToObject, "m")
 		# calibration
 		# assuming 50m long lane is shown in lower 35% of the image
+		# measuring height for a keypoint assuming the complete object
 		if distanceToObject < 50:
-			yCoordinate = (int)(img.shape[0]/100*(100-(distanceToObject / 50 * 35)))
+			# yCoordinate = (int)(img.shape[0]/100*(100-(distanceToObject / 50 * 35)))
+			yCoordinate = yCoordinateOnRoad(distanceToObject)
 			heightPixel = yCoordinate - listkpOrig[0][1]
 			# assume the focal length of the camera is 50mm
 			focalLength = 50 / 1000
-			# calibration
-			# height of the image = 185mm = 720px
-			heightActual = (heightPixel/720*0.185) * distanceToObject / focalLength
+			# height of the image = 179mm -> 480px
+			heightActual = (heightPixel/480*0.179) / focalLength * distanceToObject
 			print ("heightLimit =", "%.2f" %heightActual, "m")
 		img3 = cv2.drawMatches(imgGray,kpOrig,imgCrop,kpObj,matches[:10],None, flags=2)
 		cv2.imshow("cropped", img3)
@@ -219,11 +256,11 @@ def objectDetection():
 
 # **********Main**********
 
-cam = cv2.VideoCapture(1)
-# cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/Videos/WIN_20170218_171342.MP4")
+# cam = cv2.VideoCapture(1)
+cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/Videos/WIN_20170218_171342.MP4")
 
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output.avi',fourcc,20.0,(640,480))
+# fourcc = cv2.VideoWriter_fourcc(*'XVID')
+# out = cv2.VideoWriter('output.avi',fourcc,20.0,(640,480))
 
 timePrevious = round(time.time()*1000)	# current time in milliseconds
 s, imgPrevious = cam.read()	# keep track of previous frame to calculate distance
@@ -237,14 +274,14 @@ while (True):
 
 	cv2.imshow("Original", imgPrevious)
 
-	out.write(imgPrevious)
+	# out.write(imgPrevious)
 
 	imgPrevious = img
 
 	if cv2.waitKey(10) & 0xff == ord('q'):
 		break
 
-	time.sleep(0.25)
+	# time.sleep(0.25)
 
 cam.release()
 cv2.destroyAllWindow()
