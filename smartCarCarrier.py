@@ -66,14 +66,14 @@ def laneDetection():
 	heightFilter65 = (int)(height * 65 / 100)
 	heightFilter80 = (int)(height * 80 / 100)
 	heightFilter35 = (int)(height * 35 / 100)
-	widthFilter40 = (int)(width * 40 / 100)
-	widthFilter60 = (int)(width * 60 / 100)
+	widthFilter30 = (int)(width * 30 / 100)
+	widthFilter70 = (int)(width * 70 / 100)
 	widthFilterMiddle = (int)(width * 50 / 100)
 
 	leftTriangleT1 = [0, heightFilter65]
-	leftTriangleT2 = [widthFilter40, heightFilter65]
+	leftTriangleT2 = [widthFilter30, heightFilter65]
 	leftTriangleT3 = [0, heightFilter80]
-	rightTriangleT1 = [widthFilter60, heightFilter65]
+	rightTriangleT1 = [widthFilter70, heightFilter65]
 	rightTriangleT2 = [width, heightFilter65]
 	rightTriangleT3 = [width, heightFilter80]
 
@@ -257,7 +257,7 @@ def objectDetection():
 # **********Main**********
 
 # cam = cv2.VideoCapture(1)
-cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/Videos/WIN_20170218_171342.MP4")
+cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/CutHighwayVideo2.mp4")
 
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # out = cv2.VideoWriter('output.avi',fourcc,20.0,(640,480))
@@ -267,7 +267,7 @@ s, imgPrevious = cam.read()	# keep track of previous frame to calculate distance
 
 while (True):
 	s, img = cam.read()
-	# img = cv2.imread("/home/rangathara/FYP/images/colombo---kandy-road-warakapola.jpg")
+	# img = cv2.imread("/home/rangathara/FYP/RoadDetection/Videos/vlcsnap-2017-03-01-11h53m24s151.png")
 
 	laneDetection()
 	objectDetection()
