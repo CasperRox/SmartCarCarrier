@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import tensorflow as tf
 import imutils
 import math
 import time
@@ -63,7 +64,7 @@ def laneDetection():
 	global img
 	height, width, colorDepth = img.shape
 	# print (height, width, colorDepth)
-	heightFilter65 = (int)(height * 65 / 100)
+	heightFilter65 = (int)(height * 75 / 100)
 	heightFilter80 = (int)(height * 80 / 100)
 	heightFilter35 = (int)(height * 35 / 100)
 	widthFilter30 = (int)(width * 30 / 100)
@@ -111,10 +112,10 @@ def laneDetection():
 				if 0 != dy:	 # if dy=0 following equations will not work
 					x1New = (int)((((height-y1)/dy*dx)+x1))	 # Increase the line length
 					x2New = (int)((((heightFilter65-y1)/dy*dx)+x1))  # Increase the line length
-					if x1New <= widthFilterMiddle and x1New > xLeftDown:   # Left lane marking
+					if x1New <= widthFilterMiddle and x1New > xLeftDown and x1New < x2New:   # Left lane marking
 						xLeftDown = x1New
 						xLeftUp = x2New
-					elif x1New > widthFilterMiddle and x1New < xRightDown:  # Right lane marking
+					elif x1New > widthFilterMiddle and x1New < xRightDown and x1New > x2New:  # Right lane marking
 						xRightDown = x1New
 						xRightUp = x2New
 					cv2.line(img, (xLeftDown,height), (xLeftUp,heightFilter65), (0, 255, 0), 2)
@@ -171,9 +172,30 @@ def detectSameObject(imgSrc, imgTarget):
 	cv2.imshow("Detected", imgOrig[xy[0]:xy[0]+imgTarget.shape[0], xy[1]:xy[1]+imgTarget.shape[1]])
 	return scaling
 
+def isObstruction(imgTarget):
+	global label_lines
+	cv2.imwrite("imgTarget.jpg", imgTarget)
+	# read image data
+	image_data = tf.gfile.FastGFile("imgTarget.jpg", 'rb').read()
+    # Feed the image_data as input to the graph and get first prediction
+	with tf.Session() as sess:
+	    softmax_tensor = sess.graph.get_tensor_by_name('final_result:0')
+	    dir(sess)
+	    predictions = sess.run(softmax_tensor, \
+	             {'DecodeJpeg/contents:0': image_data})
+	    # Sort to show labels of first prediction in order of confidence
+	    top_k = predictions[0].argsort()[-len(predictions[0]):][::-1]
+	    result = label_lines[top_k[0]]
+	    print("prediction : ", result)
+	    if 'nonObstruction' == result:
+	    	return False
+	    else:
+	    	return True
+
 def objectDetection():
 	global img
 	global imgPrevious
+	global imgOrig
 	imgGray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 	imgPreviousGray = cv2.cvtColor(imgPrevious,cv2.COLOR_BGR2GRAY)
 	# ret,thresh = cv2.threshold(imgGray,35,255,cv2.THRESH_BINARY)
@@ -198,6 +220,13 @@ def objectDetection():
 	for cnt in contours[1:4]:	# the biggest rectangle is around the whole image
 		x,y,w,h = cv2.boundingRect(cnt)
 		imgCrop = imgPreviousGray[y:y+h, x:x+w]
+
+		#  image classification with TensorFlow
+		# imgCropColor = imgPrevious[y:y+h, x:x+w]
+		# print(isObstruction(imgCropColor))
+		# if !isObstruction(imgCropColor):
+			# continue
+
 		kpObj, desObj = orb.detectAndCompute(imgCrop,None)
 		if len(kpObj) == 0:	# no detectable features available
 			continue
@@ -205,47 +234,58 @@ def objectDetection():
 		# matches = sorted(matches, key = lambda x:x.distance)
 		if len(matches) < 2:	# need minimum two feature points to get distance
 			continue
-		# get keypoint coordinates of first two lowest distance matches
+		# get keypoint coordinates as (y,x) of first two lowest distance matches
 		listkpOrig = [kpOrig[mat.queryIdx].pt for mat in matches[:2]]
 		listkpObj = [kpObj[mat.trainIdx].pt for mat in matches[:2]]
 		# calculate height difference between first two matches
-		heightkpOrig = abs(listkpOrig[0][1]-listkpOrig[1][1])
-		heightkpObj = abs(listkpObj[0][1]-listkpObj[1][1])
-		print("h", heightkpOrig - heightkpObj)
+		heightkpOrig = abs(listkpOrig[0][0]-listkpOrig[1][0])
+		heightkpObj = abs(listkpObj[0][0]-listkpObj[1][0])
 		if heightkpOrig <= heightkpObj:	# detected object is too far
 			continue
-		# no need the actual difference, height difference is sufficient
 		# calculate distance between first two matches
-		distancekpOrig = math.sqrt(math.pow((listkpOrig[0][0]-listkpOrig[1][0]),2)+
-			math.pow((listkpOrig[0][1]-listkpOrig[1][1]),2))
-		distancekpObj = math.sqrt(math.pow((listkpObj[0][0]-listkpObj[1][0]),2)+
-			math.pow((listkpObj[0][1]-listkpObj[1][1]),2))
-		print("d", distancekpOrig - distancekpObj)
+		distancekpOrig = math.sqrt(math.pow((listkpOrig[0][1]-listkpOrig[1][1]),2)+
+			math.pow((listkpOrig[0][0]-listkpOrig[1][0]),2))
+		distancekpObj = math.sqrt(math.pow((listkpObj[0][1]-listkpObj[1][1]),2)+
+			math.pow((listkpObj[0][0]-listkpObj[1][0]),2))
 		if distancekpOrig <= distancekpObj:	# detected object is too far
 			continue
 		# calculate distance to the object from the vehicle (m)
-		# print ("a", distancekpObj)
-		# print ("b", distancekpOrig)
+		print ("a", distancekpObj)
+		print ("b", distancekpOrig)
+		print(calculateVehicleDistance())
 		distanceToObject = (calculateVehicleDistance() * distancekpObj)/(distancekpOrig - distancekpObj)
 		# distanceToObject = (calculateVehicleDistance() * heightkpObj)/(heightkpOrig - heightkpObj)
-		print ("distance", "%.2f" %distanceToObject, "m")
+		print ("distance =", "%.2f" %distanceToObject, "m")
 		# calibration
 		# assuming 50m long lane is shown in lower 35% of the image
 		# measuring height for a keypoint assuming the complete object
-		if distanceToObject < 50:
-			# yCoordinate = (int)(img.shape[0]/100*(100-(distanceToObject / 50 * 35)))
-			yCoordinate = yCoordinateOnRoad(distanceToObject)
-			heightPixel = yCoordinate - listkpOrig[0][1]
-			# assume the focal length of the camera is 50mm
-			focalLength = 50 / 1000
-			# height of the image = 179mm -> 480px
-			heightActual = (heightPixel/480*0.179) / focalLength * distanceToObject
-			print ("heightLimit =", "%.2f" %heightActual, "m")
+		if distanceToObject>50 or distanceToObject<5:
+			continue
+		# yCoordinate = (int)(img.shape[0]/100*(100-(distanceToObject / 50 * 35)))
+		yCoordinate = yCoordinateOnRoad(distanceToObject)
+		if listkpOrig[0][0] > listkpOrig[1][0]:
+			heightPixel = abs(yCoordinate - listkpOrig[0][0])
+		else:
+			heightPixel = abs(yCoordinate - listkpOrig[1][0])
+		print(yCoordinate)
+		print(listkpOrig[0][0])
+		print(listkpOrig[1][0])
+		print(heightPixel)
+		# assume the focal length of the camera is 50mm
+		focalLength = 50 / 1000
+		# height of the image = 179mm -> 480px
+		heightActual = (heightPixel/480*0.179) / focalLength * distanceToObject
+		print ("heightLimit =", "%.2f" %heightActual, "m")
+		if heightVehicle >= heightActual:
+			imgTemp = imgOrig.copy()
+			cv2.rectangle(imgTemp,(x,y),(x+w,y+h),(0,0,255),-1)
+			cv2.addWeighted(imgTemp,0.5,imgOrig,0.5,0,imgOrig)
+			cv2.putText(imgOrig, '%.2f' %heightActual, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,255), 2, cv2.LINE_AA)
+		else:
+			cv2.rectangle(imgOrig,(x,y),(x+w,y+h),(0,255,0),2)
 		img3 = cv2.drawMatches(imgGray,kpOrig,imgCrop,kpObj,matches[:10],None, flags=2)
-		cv2.imshow("cropped", img3)
+		cv2.imshow("KeyPoint Matches", img3)
 		# cv2.imshow("cropped", imgCrop)
-		cv2.rectangle(imgPrevious,(x,y),(x+w,y+h),(0,0,255),2)
-		cv2.putText(imgPrevious, '%.2f' %distanceToObject, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,255), 2, cv2.LINE_AA)
 		# scaling = detectSameObject(imgGray, imgCrop)
 		# time.sleep(0.5)
 
@@ -256,12 +296,24 @@ def objectDetection():
 
 # **********Main**********
 
+# LogiTech C270 HD720p webcam
 # cam = cv2.VideoCapture(1)
-cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/CutHighwayVideo2.mp4")
+cam = cv2.VideoCapture("/home/rangathara/FYP/RoadDetection/Videos/WIN_20170306_113347.MP4")
 
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')
 # out = cv2.VideoWriter('output.avi',fourcc,20.0,(640,480))
 
+"""
+# Loads label file, strips off carriage return
+label_lines = [line.rstrip() for line in tf.gfile.GFile("retrained_labels.txt")]
+# Unpersists graph from file
+with tf.gfile.FastGFile("retrained_graph.pb", 'rb') as f:
+    graph_def = tf.GraphDef()
+    graph_def.ParseFromString(f.read())
+    _ = tf.import_graph_def(graph_def, name='')
+"""
+
+heightVehicle = 2	# assume height of the vehicle is 2m
 timePrevious = round(time.time()*1000)	# current time in milliseconds
 s, imgPrevious = cam.read()	# keep track of previous frame to calculate distance
 
@@ -269,14 +321,17 @@ while (True):
 	s, img = cam.read()
 	# img = cv2.imread("/home/rangathara/FYP/RoadDetection/Videos/vlcsnap-2017-03-01-11h53m24s151.png")
 
+	imgOrig = img.copy()
+
 	laneDetection()
 	objectDetection()
 
 	cv2.imshow("Original", imgPrevious)
+	cv2.imshow("Final Result", imgOrig)
 
 	# out.write(imgPrevious)
 
-	imgPrevious = img
+	imgPrevious = img.copy()
 
 	if cv2.waitKey(10) & 0xff == ord('q'):
 		break
