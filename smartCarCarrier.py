@@ -237,6 +237,8 @@ def objectDetection():
 		# get keypoint coordinates as (y,x) of first two lowest distance matches
 		listkpOrig = [kpOrig[mat.queryIdx].pt for mat in matches[:2]]
 		listkpObj = [kpObj[mat.trainIdx].pt for mat in matches[:2]]
+		print(listkpOrig)
+		print(listkpObj)
 		# calculate height difference between first two matches
 		heightkpOrig = abs(listkpOrig[0][0]-listkpOrig[1][0])
 		heightkpObj = abs(listkpObj[0][0]-listkpObj[1][0])
